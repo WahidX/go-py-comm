@@ -17,14 +17,37 @@ type data struct {
 }
 
 func PostData(w http.ResponseWriter, r *http.Request) {
+	var d interface{}
+	err := json.NewDecoder(r.Body).Decode(&d)
+	if err != nil {
+		SendResponse(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
 
-	log.Println("Sent data to py script")
+	b, _ := json.Marshal(d)
+	arg := string(b)
+
+	currDir, _ := os.Getwd()
+	p := path.Join(currDir, "py_scripts/post.py")
+
+	cmd := exec.Command("python", p, arg)
+	out, err := cmd.Output()
+	if err != nil {
+		log.Println(err)
+		SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	SendResponse(w, http.StatusOK, map[string]interface{}{
+		"output": string(out),
+	})
 }
 
 func GetData(w http.ResponseWriter, r *http.Request) {
 	currDir, err := os.Getwd()
 	if err != nil {
-		fmt.Println(err)
+		SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
+		return
 	}
 
 	p := path.Join(currDir, "py_scripts/get.py")
@@ -33,14 +56,14 @@ func GetData(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.Command("python", p)
 	out, err := cmd.Output()
 	if err != nil {
-		log.Println(err)
+		SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 
 	d := data{}
 	err = json.Unmarshal(out, &d)
 	if err != nil {
-		log.Println("invalid JSON out from Python script")
+		SendResponse(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 

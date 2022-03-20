@@ -1,4 +1,4 @@
-module github.com/wahidx/go-py-comm
+module github.com/wahidx/gopycomm
 
 go 1.17
 
